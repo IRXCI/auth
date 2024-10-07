@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package auth;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+option go_package = "github.com/IRXCI/auth/pkg/auth;auth";
+
+service UserAPI {
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc UpdateUser(UpdateUserRequest) returns (google.protobuf.Empty);
+  rpc DeleteUser(DeleteUserRequest) returns (google.protobuf.Empty);
+}
+
+enum Role{
+    GUEST = 0;
+    USER = 1;
+    ADMIN = 2;
+}
+
+message User{
+    string name = 1;
+    string email = 2;
+    Role role = 3;
+}
+
+message CreateUserRequest{
+    User user_auth = 1;
+    string password = 2;
+    string password_confirm = 3;
+}
+
+message CreateUserResponse{
+    int64 id = 1;
+}
+
+message GetUserRequest{
+    int64 id = 1;
+}
+
+message GetUserResponse{
+    int64 id = 1;
+    User user_auth = 2;
+    google.protobuf.Timestamp created_at = 3;
+    google.protobuf.Timestamp updated_at = 4;
+}
+
+message UpdateUserRequest{
+    int64 id = 1;
+    google.protobuf.StringValue name = 2;
+    google.protobuf.StringValue email = 3;
+    Role role = 4;
+}
+
+message DeleteUserRequest{
+    int64 id = 1;
+}
