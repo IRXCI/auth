@@ -21,7 +21,7 @@ type server struct {
 	desc.UnimplementedUserAPIServer
 }
 
-func (s *server) CreateUser(_ context.Context, req *desc.CreateUserRequest) (*desc.CreateUserResponse, error) {
+func (s *server) CreateUser(_ context.Context, _ *desc.CreateUserRequest) (*desc.CreateUserResponse, error) {
 	log.Printf("CreateUser is working...")
 
 	return &desc.CreateUserResponse{
