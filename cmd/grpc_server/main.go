@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	desc "github.com/IRXCI/auth/pkg/auth"
+	desc "github.com/IRXCI/auth/tree/second/pkg/auth"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
