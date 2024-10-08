@@ -26,3 +26,14 @@ generate-note-api:
 	--go-grpc_out=pkg/auth --go-grpc_opt=paths=source_relative \
 	--plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
 	api/auth_proto/auth.proto
+
+build:
+	GOOS=linux GOARCH=amd64 go build -o service_linux cmd/grpc_server/main.go
+
+copy-to-server:
+	scp service_linux root@185.91.53.71:
+
+docker-build-and-push:
+	sudo docker buildx build --no-cache --platform linux/amd64 -t cr.selcloud.ru/rxc/auth-serv .
+	sudo docker login -u token -p CRgAAAAA8eHjytZYbhvTuUaSQpXlPEIZAIA9QY7k cr.selcloud.ru/rxc
+	sudo docker push cr.selcloud.ru/rxc/auth-serv
