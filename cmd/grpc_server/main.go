@@ -31,7 +31,7 @@ func init() {
 	flag.StringVar(&configPath, "config-path", ".env", "path to config file")
 }
 
-func (s *server) CreateUser(ctx context.Context, req *desc.CreateUserRequest) (*desc.CreateUserResponse, error) {
+func (s *server) CreateUser(ctx context.Context, _ *desc.CreateUserRequest) (*desc.CreateUserResponse, error) {
 
 	builderCreateUser := sq.Insert("auth").
 		PlaceholderFormat(sq.Dollar).
@@ -85,8 +85,8 @@ func (s *server) GetUser(ctx context.Context, req *desc.GetUserRequest) (*desc.G
 	return &desc.GetUserResponse{
 		Id: req.GetId(),
 		UserAuth: &desc.User{
-			Name:  gofakeit.Name(),
-			Email: gofakeit.Email(),
+			Name:  name,
+			Email: email,
 			Role:  desc.Role_USER},
 
 		CreatedAt: timestamppb.New(gofakeit.Date()),
