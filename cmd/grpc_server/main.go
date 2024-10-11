@@ -28,7 +28,7 @@ type server struct {
 var configPath string
 
 func init() {
-	flag.StringVar(&configPath, "config-path", ".env", "path to config file")
+	flag.StringVar(&configPath, "config-path", "../../.env", "path to config file")
 }
 
 func (s *server) CreateUser(ctx context.Context, _ *desc.CreateUserRequest) (*desc.CreateUserResponse, error) {
@@ -36,7 +36,7 @@ func (s *server) CreateUser(ctx context.Context, _ *desc.CreateUserRequest) (*de
 	builderCreateUser := sq.Insert("auth").
 		PlaceholderFormat(sq.Dollar).
 		Columns("name", "email", "role").
-		Values(gofakeit.BeerName(), gofakeit.Email(), "1").
+		Values(gofakeit.BeerName(), gofakeit.Email(), "USER").
 		Suffix("RETURNING id")
 
 	query, args, err := builderCreateUser.ToSql()
@@ -100,7 +100,7 @@ func (s *server) UpdateUser(ctx context.Context, req *desc.UpdateUserRequest) (*
 		PlaceholderFormat(sq.Dollar).
 		Set("name", gofakeit.Name()).
 		Set("email", gofakeit.Email()).
-		Set("role", "1").
+		Set("role", "USER").
 		Set("updated_at", time.Now()).
 		Where(sq.Eq{"id": req.GetId()})
 
