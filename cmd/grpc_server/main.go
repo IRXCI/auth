@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/IRXCI/auth/config"
-	"github.com/brianvoe/gofakeit"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -31,12 +30,12 @@ func init() {
 	flag.StringVar(&configPath, "config-path", "../../.env", "path to config file")
 }
 
-func (s *server) CreateUser(ctx context.Context, _ *desc.CreateUserRequest) (*desc.CreateUserResponse, error) {
+func (s *server) CreateUser(ctx context.Context, req *desc.CreateUserRequest) (*desc.CreateUserResponse, error) {
 
 	builderCreateUser := sq.Insert("auth").
 		PlaceholderFormat(sq.Dollar).
 		Columns("name", "email", "role").
-		Values(gofakeit.BeerName(), gofakeit.Email(), "USER").
+		Values(req.UserAuth.Name, req.UserAuth.Email, req.UserAuth.Role).
 		Suffix("RETURNING id")
 
 	query, args, err := builderCreateUser.ToSql()
@@ -62,15 +61,15 @@ func (s *server) GetUser(ctx context.Context, req *desc.GetUserRequest) (*desc.G
 	builderGetUser := sq.Select("id", "name", "email", "role", "created_at", "updated_at").
 		From("auth").
 		PlaceholderFormat(sq.Dollar).
-		OrderBy("id ASC").
-		Limit(10)
+		Where(sq.Eq{"id": req.GetId()}).
+		Limit(1)
 
 	query, args, err := builderGetUser.ToSql()
 	if err != nil {
 		log.Fatalf("failed to build query: %v", err)
 	}
 
-	var id int
+	var id int64
 	var name, email, role string
 	var createdAt time.Time
 	var updatedAt sql.NullTime
@@ -80,17 +79,17 @@ func (s *server) GetUser(ctx context.Context, req *desc.GetUserRequest) (*desc.G
 		log.Fatalf("failed to select user: %v", err)
 	}
 
-	log.Printf("id: %d, name: %s, body: %s, role: %s, created_at: %v, updated_at: %v\n", id, name, email, role, createdAt, updatedAt)
+	log.Printf("id: %d, name: %s, email: %s, role: %s, created_at: %v, updated_at: %v\n", id, name, email, role, createdAt, updatedAt)
 
 	return &desc.GetUserResponse{
 		Id: req.GetId(),
 		UserAuth: &desc.User{
 			Name:  name,
 			Email: email,
-			Role:  desc.Role_USER},
+			Role:  desc.Role_USER}, // здесь ошибка, но я хз че передавать
 
-		CreatedAt: timestamppb.New(gofakeit.Date()),
-		UpdatedAt: timestamppb.New(gofakeit.Date()),
+		CreatedAt: timestamppb.New(createdAt),
+		UpdatedAt: timestamppb.New(updatedAt.Time),
 	}, nil
 }
 
@@ -98,11 +97,18 @@ func (s *server) UpdateUser(ctx context.Context, req *desc.UpdateUserRequest) (*
 
 	builderUpdateUser := sq.Update("auth").
 		PlaceholderFormat(sq.Dollar).
-		Set("name", gofakeit.Name()).
-		Set("email", gofakeit.Email()).
-		Set("role", "USER").
 		Set("updated_at", time.Now()).
-		Where(sq.Eq{"id": req.GetId()})
+		Where(sq.Eq{"id": req.Id})
+
+	if req.Name.Value != "" {
+		builderUpdateUser.Set("name", req.Name.Value).Where(sq.Eq{"id": req.Id}) // не работает
+	}
+	if req.Email.Value != "" {
+		builderUpdateUser.Set("email", req.Email.Value).Where(sq.Eq{"id": req.Id}) // не работает
+	}
+	if req.Role.String() != "" {
+		builderUpdateUser.Set("role", req.Role).Where(sq.Eq{"id": req.Id}) // не работает
+	}
 
 	query, args, err := builderUpdateUser.ToSql()
 	if err != nil {
@@ -115,6 +121,7 @@ func (s *server) UpdateUser(ctx context.Context, req *desc.UpdateUserRequest) (*
 	}
 
 	log.Printf("updated %d rows", res.RowsAffected())
+
 	return &emptypb.Empty{}, nil
 }
 
@@ -122,8 +129,7 @@ func (s *server) DeleteUser(ctx context.Context, req *desc.DeleteUserRequest) (*
 
 	builderDeleteUser := sq.Delete("auth").
 		PlaceholderFormat(sq.Dollar).
-		Where(sq.Eq{"id": req.GetId()}).
-		Limit(1)
+		Where(sq.Eq{"id": req.Id})
 
 	query, args, err := builderDeleteUser.ToSql()
 	if err != nil {
@@ -135,7 +141,7 @@ func (s *server) DeleteUser(ctx context.Context, req *desc.DeleteUserRequest) (*
 		log.Fatalf("failed to delete user: %v", err)
 	}
 
-	log.Printf("User with id: %d, deleted", req.GetId())
+	log.Printf("User with id: %d, deleted", req.Id)
 
 	return &emptypb.Empty{}, nil
 }
