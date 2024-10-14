@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"flag"
 	"log"
 	"net"
@@ -30,23 +31,45 @@ func init() {
 	flag.StringVar(&configPath, "config-path", "../../.env", "path to config file")
 }
 
-func (s *server) CreateUser(ctx context.Context, req *desc.CreateUserRequest) (*desc.CreateUserResponse, error) {
+func mapper(role string) desc.Role {
+	var res desc.Role
+	switch role {
+	case desc.Role_USER.String():
+		res = desc.Role_USER
+	case desc.Role_ADMIN.String():
+		res = desc.Role_ADMIN
+	}
+	return res
+}
+
+func (s *server) CreateUser(ctx context.Context,
+	req *desc.CreateUserRequest) (*desc.CreateUserResponse, error) {
+
+	role := req.GetUserAuth().GetRole()
+	if role == desc.Role_UNSPECIFIED {
+		log.Printf("pick wrong role")
+		return nil, errors.New("pick wrong role")
+	}
 
 	builderCreateUser := sq.Insert("auth").
 		PlaceholderFormat(sq.Dollar).
 		Columns("name", "email", "role").
-		Values(req.UserAuth.Name, req.UserAuth.Email, req.UserAuth.Role).
+		Values(req.GetUserAuth().GetName(),
+			req.GetUserAuth().GetEmail(),
+			req.GetUserAuth().GetRole()).
 		Suffix("RETURNING id")
 
 	query, args, err := builderCreateUser.ToSql()
 	if err != nil {
-		log.Fatalf("failed to build query: %v", err)
+		log.Printf("failed to build query: %v", err)
+		return nil, err
 	}
 
 	var UserID int64
 	err = s.pool.QueryRow(ctx, query, args...).Scan(&UserID)
 	if err != nil {
-		log.Fatalf("failed to insert user: %v", err)
+		log.Printf("failed to insert user: %v", err)
+		return nil, err
 	}
 
 	log.Printf("Insert user with id: %d", UserID)
@@ -56,7 +79,8 @@ func (s *server) CreateUser(ctx context.Context, req *desc.CreateUserRequest) (*
 	}, nil
 }
 
-func (s *server) GetUser(ctx context.Context, req *desc.GetUserRequest) (*desc.GetUserResponse, error) {
+func (s *server) GetUser(ctx context.Context,
+	req *desc.GetUserRequest) (*desc.GetUserResponse, error) {
 
 	builderGetUser := sq.Select("id", "name", "email", "role", "created_at", "updated_at").
 		From("auth").
@@ -66,58 +90,69 @@ func (s *server) GetUser(ctx context.Context, req *desc.GetUserRequest) (*desc.G
 
 	query, args, err := builderGetUser.ToSql()
 	if err != nil {
-		log.Fatalf("failed to build query: %v", err)
+		log.Printf("failed to build query: %v", err)
+		return nil, err
 	}
 
-	var id int64
-	var name, email, role string
-	var createdAt time.Time
-	var updatedAt sql.NullTime
+	var (
+		id                int64
+		name, email, role string
+		createdAt         time.Time
+		updatedAt         sql.NullTime
+	)
 
-	err = s.pool.QueryRow(ctx, query, args...).Scan(&id, &name, &email, &role, &createdAt, &updatedAt)
+	err = s.pool.QueryRow(ctx, query, args...).
+		Scan(&id, &name, &email, &role, &createdAt, &updatedAt)
 	if err != nil {
-		log.Fatalf("failed to select user: %v", err)
+		log.Printf("failed to select user: %v", err)
+		return nil, err
 	}
 
-	log.Printf("id: %d, name: %s, email: %s, role: %s, created_at: %v, updated_at: %v\n", id, name, email, role, createdAt, updatedAt)
+	log.Printf("id: %d, name: %s, email: %s, role: %s, created_at: %v, updated_at: %v\n",
+		id, name, email, role, createdAt, updatedAt)
 
 	return &desc.GetUserResponse{
 		Id: req.GetId(),
 		UserAuth: &desc.User{
 			Name:  name,
 			Email: email,
-			Role:  desc.Role_USER}, // здесь ошибка, но я хз че передавать
+			Role:  mapper(role)},
 
 		CreatedAt: timestamppb.New(createdAt),
 		UpdatedAt: timestamppb.New(updatedAt.Time),
 	}, nil
 }
 
-func (s *server) UpdateUser(ctx context.Context, req *desc.UpdateUserRequest) (*emptypb.Empty, error) {
+func (s *server) UpdateUser(
+	ctx context.Context,
+	req *desc.UpdateUserRequest,
+) (*emptypb.Empty, error) {
 
 	builderUpdateUser := sq.Update("auth").
 		PlaceholderFormat(sq.Dollar).
 		Set("updated_at", time.Now()).
-		Where(sq.Eq{"id": req.Id})
+		Where(sq.Eq{"id": req.GetId()})
 
-	if req.Name.Value != "" {
-		builderUpdateUser.Set("name", req.Name.Value).Where(sq.Eq{"id": req.Id}) // не работает
+	if req.GetName().GetValue() != "" {
+		builderUpdateUser = builderUpdateUser.Set("name", req.GetName().GetValue())
 	}
-	if req.Email.Value != "" {
-		builderUpdateUser.Set("email", req.Email.Value).Where(sq.Eq{"id": req.Id}) // не работает
+	if req.GetEmail().GetValue() != "" {
+		builderUpdateUser = builderUpdateUser.Set("email", req.GetEmail().GetValue())
 	}
-	if req.Role.String() != "" {
-		builderUpdateUser.Set("role", req.Role).Where(sq.Eq{"id": req.Id}) // не работает
+	if req.GetRole().String() != "" {
+		builderUpdateUser = builderUpdateUser.Set("role", req.GetRole().String())
 	}
 
 	query, args, err := builderUpdateUser.ToSql()
 	if err != nil {
-		log.Fatalf("failed to build query: %v", err)
+		log.Printf("failed to build query: %v", err)
+		return nil, err
 	}
 
 	res, err := s.pool.Exec(ctx, query, args...)
 	if err != nil {
-		log.Fatalf("failed to update user: %v", err)
+		log.Printf("failed to update user: %v", err)
+		return nil, err
 	}
 
 	log.Printf("updated %d rows", res.RowsAffected())
@@ -125,23 +160,26 @@ func (s *server) UpdateUser(ctx context.Context, req *desc.UpdateUserRequest) (*
 	return &emptypb.Empty{}, nil
 }
 
-func (s *server) DeleteUser(ctx context.Context, req *desc.DeleteUserRequest) (*emptypb.Empty, error) {
+func (s *server) DeleteUser(ctx context.Context,
+	req *desc.DeleteUserRequest) (*emptypb.Empty, error) {
 
 	builderDeleteUser := sq.Delete("auth").
 		PlaceholderFormat(sq.Dollar).
-		Where(sq.Eq{"id": req.Id})
+		Where(sq.Eq{"id": req.GetId()})
 
 	query, args, err := builderDeleteUser.ToSql()
 	if err != nil {
-		log.Fatalf("failed to build query: %v", err)
+		log.Printf("failed to build query: %v", err)
+		return nil, err
 	}
 
 	_, err = s.pool.Exec(ctx, query, args...)
 	if err != nil {
-		log.Fatalf("failed to delete user: %v", err)
+		log.Printf("failed to delete user: %v", err)
+		return nil, err
 	}
 
-	log.Printf("User with id: %d, deleted", req.Id)
+	log.Printf("User with id: %d, deleted", req.GetId())
 
 	return &emptypb.Empty{}, nil
 }

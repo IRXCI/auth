@@ -12,6 +12,7 @@ require (
 	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
 	github.com/Masterminds/squirrel v1.5.4 // indirect
 	github.com/brianvoe/gofakeit v3.18.0+incompatible // indirect
+	github.com/go-faster/errors v0.7.1 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.14.3 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
