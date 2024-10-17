@@ -20,6 +20,8 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
+const grpcPort = 50052
+
 type server struct {
 	desc.UnimplementedUserAPIServer
 	pool *pgxpool.Pool
