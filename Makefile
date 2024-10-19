@@ -35,12 +35,12 @@ build:
 	GOOS=linux GOARCH=amd64 go build -o service_linux cmd/grpc_server/main.go
 
 copy-to-server:
-	scp service_linux root@185.91.53.71:
+	scp service_linux root@45.94.123.117:
 
 docker-build-and-push:
-	sudo docker buildx build --no-cache --platform linux/amd64 -t cr.selcloud.ru/rxc/auth-serv .
-	sudo docker login -u token -p CRgAAAAA8eHjytZYbhvTuUaSQpXlPEIZAIA9QY7k cr.selcloud.ru/rxc
-	sudo docker push cr.selcloud.ru/rxc/auth-serv
+	sudo docker buildx build --no-cache --platform linux/amd64 -t cr.selcloud.ru/rxc/auth .
+	sudo docker login -u token -p CRgAAAAAA-DpIDItG2I2dZIRpuy9vAqkWpLUhaDV cr.selcloud.ru/rxc
+	sudo docker push cr.selcloud.ru/rxc/auth
 
 install-deps:
 	GOBIN=$(LOCAL_BIN) go install github.com/pressly/goose/v3/cmd/goose@v3.14.0
