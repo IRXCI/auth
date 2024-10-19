@@ -1,7 +1,7 @@
 FROM golang:1.23.2-alpine AS builder
 
-COPY . /github.com/IRXCI/auth/source
-WORKDIR /github.com/IRXCI/auth/source
+COPY . /github.com/IRXCI/auth/source/
+WORKDIR /github.com/IRXCI/auth/source/
 
 RUN go mod download
 RUN go build -o ./bin/crud_server cmd/grpc_server/main.go
