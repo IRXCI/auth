@@ -8,8 +8,8 @@ on:
 
 env:
   REGISTRY: "cr.selcloud.ru/rxc"
-  IMAGE_NAME: "auth-server"
-  CONTAINER_NAME: "auth-server-container"
+  IMAGE_NAME: "auth"
+  CONTAINER_NAME: "auth-container"
 
 jobs:
   image-build-and-push:
