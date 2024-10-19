@@ -13,6 +13,7 @@ lint:
 install-deps:
 	GOBIN=$(LOCAL_BIN) go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1
 	GOBIN=$(LOCAL_BIN) go install -mod=mod google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
+	GOBIN=$(LOCAL_BIN) go install github.com/pressly/goose/v3/cmd/goose@v3.14.0
 
 get-deps:
 	go get -u google.golang.org/protobuf/cmd/protoc-gen-go
@@ -30,20 +31,6 @@ generate-note-api:
 	--go-grpc_out=pkg/auth --go-grpc_opt=paths=source_relative \
 	--plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
 	api/auth_proto/auth.proto
-
-build:
-	GOOS=linux GOARCH=amd64 go build -o service_linux cmd/grpc_server/main.go
-
-copy-to-server:
-	scp service_linux root@45.94.123.117:
-
-docker-build-and-push:
-	sudo docker buildx build --no-cache --platform linux/amd64 -t cr.selcloud.ru/rxc/auth .
-	sudo docker login -u token -p CRgAAAAAA-DpIDItG2I2dZIRpuy9vAqkWpLUhaDV cr.selcloud.ru/rxc
-	sudo docker push cr.selcloud.ru/rxc/auth
-
-install-deps:
-	GOBIN=$(LOCAL_BIN) go install github.com/pressly/goose/v3/cmd/goose@v3.14.0
 
 local-migration-status:
 	${LOCAL_BIN}/goose -dir ${LOCAL_MIGRATION_DIR} postgres ${LOCAL_MIGRATION_DSN} status -v
