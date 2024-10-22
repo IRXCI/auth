@@ -9,7 +9,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/IRXCI/auth/config"
+	"github.com/IRXCI/auth/internal/config"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
