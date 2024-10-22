@@ -9,7 +9,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/IRXCI/auth/config"
+	"github.com/IRXCI/auth/internal/config"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -31,15 +31,17 @@ func init() {
 	flag.StringVar(&configPath, "config-path", "../../.env", "path to config file")
 }
 
-func mapper(role string) desc.Role {
+func mapper(role string) (desc.Role, error) {
 	var res desc.Role
 	switch role {
 	case desc.Role_USER.String():
 		res = desc.Role_USER
 	case desc.Role_ADMIN.String():
 		res = desc.Role_ADMIN
+	default:
+		return res, errors.New("role cannot be converted")
 	}
-	return res
+	return res, nil
 }
 
 func (s *server) CreateUser(ctx context.Context,
@@ -47,8 +49,8 @@ func (s *server) CreateUser(ctx context.Context,
 
 	role := req.GetUserAuth().GetRole()
 	if role == desc.Role_UNSPECIFIED {
-		log.Printf("pick wrong role")
-		return nil, errors.New("pick wrong role")
+		log.Printf("user picked wrong role")
+		return nil, errors.New("picked wrong role")
 	}
 
 	builderCreateUser := sq.Insert("auth").
@@ -111,12 +113,18 @@ func (s *server) GetUser(ctx context.Context,
 	log.Printf("id: %d, name: %s, email: %s, role: %s, created_at: %v, updated_at: %v\n",
 		id, name, email, role, createdAt, updatedAt)
 
+	rolle, err := mapper(role)
+	if err != nil {
+		log.Printf("failed to converted role")
+		return nil, err
+	}
+
 	return &desc.GetUserResponse{
 		Id: req.GetId(),
 		UserAuth: &desc.User{
 			Name:  name,
 			Email: email,
-			Role:  mapper(role)},
+			Role:  rolle},
 
 		CreatedAt: timestamppb.New(createdAt),
 		UpdatedAt: timestamppb.New(updatedAt.Time),
