@@ -41,6 +41,8 @@ linters:
     - revive
     - typecheck
     - unused
+  goimports:
+    comments: false
 
 issues:
   exclude-use-default: false
