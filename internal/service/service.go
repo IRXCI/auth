@@ -1,4 +1,4 @@
-package repository
+package service
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type AuthRepository interface {
+type NoteService interface {
 	CreateUser(ctx context.Context, info *model.User) (int64, error)
 	GetUser(ctx context.Context, id int64) (*model.Note, error)
 	UpdateUser(ctx context.Context, info *model.UserPlusId) (*emptypb.Empty, error)

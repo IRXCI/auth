@@ -6,12 +6,12 @@ import (
 	"log"
 	"time"
 
+	"github.com/IRXCI/auth/internal/client/db"
+	"github.com/IRXCI/auth/internal/model"
 	"github.com/IRXCI/auth/internal/repository"
 	"github.com/IRXCI/auth/internal/repository/note/converter"
-	"github.com/IRXCI/auth/internal/repository/note/model"
-	desc "github.com/IRXCI/auth/pkg/auth"
+	modelRepo "github.com/IRXCI/auth/internal/repository/note/model"
 	sq "github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -27,20 +27,31 @@ const (
 )
 
 type repo struct {
-	db *pgxpool.Pool
+	db db.Client
 }
 
-func NewRepository(db *pgxpool.Pool) repository.AuthRepository {
+func NewRepository(db db.Client) repository.AuthRepository {
 	return &repo{db: db}
+}
+
+func validRole(info *model.User) error {
+	switch info.Role {
+	case "ADMIN":
+		return nil
+	case "USER":
+		return nil
+	default:
+		return errors.New("picked wrong role")
+	}
 }
 
 func (r *repo) CreateUser(ctx context.Context,
 	info *model.User) (int64, error) {
 
-	role := info.Role
-	if role == "UNSPECIFIED" {
+	err := validRole(info)
+	if err != nil {
 		log.Printf("picked wrong role")
-		return 0, errors.New("picked wrong role")
+		return 0, err
 	}
 
 	builderCreateUser := sq.Insert(tableName).
@@ -55,20 +66,25 @@ func (r *repo) CreateUser(ctx context.Context,
 		return 0, err
 	}
 
+	q := db.Query{
+		Name:     "note_repository.CreateUser",
+		QueryRaw: query,
+	}
+
 	var UserID int64
-	err = r.db.QueryRow(ctx, query, args...).Scan(&UserID)
+	err = r.db.DB().QueryRowContext(ctx, q, args...).Scan(&UserID)
 	if err != nil {
 		log.Printf("failed to insert user: %v", err)
 		return 0, err
 	}
 
-	log.Printf("Insert user with id: %d", UserID)
+	log.Printf("Inserted user with id: %d", UserID)
 
 	return UserID, nil
 }
 
 func (r *repo) GetUser(ctx context.Context,
-	id int64) (*desc.GetUserResponse, error) {
+	id int64) (*model.Note, error) {
 
 	builderGetUser := sq.Select(idColumn, nameColumn, emailColumn, roleColumn, createdAtColumn, updatedAtColumn).
 		From(tableName).
@@ -82,37 +98,47 @@ func (r *repo) GetUser(ctx context.Context,
 		return nil, err
 	}
 
-	var note model.Note
-	err = r.db.QueryRow(ctx, query, args...).
-		Scan(&note.Id, &note.UserNote, &note.CreatedAt, &note.UpdatedAt)
+	q := db.Query{
+		Name:     "note_repository.GetUser",
+		QueryRaw: query,
+	}
+
+	var note modelRepo.Note
+	err = r.db.DB().QueryRowContext(ctx, q, args...).
+		Scan(&note.Id, &note.Name, &note.Email, &note.Role, &note.CreatedAt, &note.UpdatedAt)
 	if err != nil {
 		log.Printf("failed to select user: %v", err)
 		return nil, err
 	}
 
 	log.Printf("id: %d, name: %s, email: %s, role: %s, created_at: %v, updated_at: %v\n",
-		note.Id, note.UserNote.Name, note.UserNote.Email, note.UserNote.Role, note.CreatedAt, note.UpdatedAt)
+		note.Id, note.Name, note.Email, note.Role, note.CreatedAt, note.UpdatedAt)
 
 	return converter.ToNoteFromRepo(&note), nil
 }
 
 func (r *repo) UpdateUser(ctx context.Context,
-	req *desc.UpdateUserRequest,
-) (*emptypb.Empty, error) {
+	info *model.UserPlusId) (*emptypb.Empty, error) {
 
 	builderUpdateUser := sq.Update(tableName).
 		PlaceholderFormat(sq.Dollar).
-		Set("updated_at", time.Now()).
-		Where(sq.Eq{"id": req.GetId()})
+		Set(updatedAtColumn, time.Now()).
+		Where(sq.Eq{"id": info.Id})
 
-	if req.GetName().GetValue() != "" {
-		builderUpdateUser = builderUpdateUser.Set(nameColumn, req.GetName().GetValue())
+	if info.Name != "" {
+		builderUpdateUser = builderUpdateUser.Set(nameColumn, info.Name)
 	}
-	if req.GetEmail().GetValue() != "" {
-		builderUpdateUser = builderUpdateUser.Set(emailColumn, req.GetEmail().GetValue())
+	if info.Email != "" {
+		builderUpdateUser = builderUpdateUser.Set(emailColumn, info.Email)
 	}
-	if req.GetRole().String() != "" {
-		builderUpdateUser = builderUpdateUser.Set(roleColumn, req.GetRole().String())
+
+	if info.Role == "UNSPECIFIED" {
+		log.Printf("picked wrong role")
+		return nil, errors.New("picked wrong role")
+	}
+
+	if info.Role != "" {
+		builderUpdateUser = builderUpdateUser.Set(roleColumn, info.Role)
 	}
 
 	query, args, err := builderUpdateUser.ToSql()
@@ -121,7 +147,12 @@ func (r *repo) UpdateUser(ctx context.Context,
 		return nil, err
 	}
 
-	res, err := r.db.Exec(ctx, query, args...)
+	q := db.Query{
+		Name:     "note_repository.UpdateUser",
+		QueryRaw: query,
+	}
+
+	res, err := r.db.DB().ExecContext(ctx, q, args...)
 	if err != nil {
 		log.Printf("failed to update user: %v", err)
 		return nil, err
@@ -145,7 +176,12 @@ func (r *repo) DeleteUser(ctx context.Context,
 		return nil, err
 	}
 
-	_, err = r.db.Exec(ctx, query, args...)
+	q := db.Query{
+		Name:     "note_repository.DeleteUser",
+		QueryRaw: query,
+	}
+
+	_, err = r.db.DB().ExecContext(ctx, q, args...)
 	if err != nil {
 		log.Printf("failed to delete user: %v", err)
 		return nil, err
