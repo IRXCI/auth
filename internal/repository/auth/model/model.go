@@ -5,7 +5,18 @@ import (
 	"time"
 )
 
-type Note struct {
+const (
+	TableName = "auth"
+
+	IdColumn        = "id"
+	NameColumn      = "name"
+	EmailColumn     = "email"
+	RoleColumn      = "role"
+	CreatedAtColumn = "created_at"
+	UpdatedAtColumn = "updated_at"
+)
+
+type UserInfo struct {
 	Id        int64        `db:"id"`
 	Name      string       `db:"name"`
 	Email     string       `db:"email"`

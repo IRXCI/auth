@@ -1,7 +1,8 @@
-package note
+package handler
 
 import (
 	"context"
+	"log"
 
 	desc "github.com/IRXCI/auth/pkg/auth"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -10,8 +11,9 @@ import (
 func (i *Implementation) DeleteUser(ctx context.Context,
 	req *desc.DeleteUserRequest) (*emptypb.Empty, error) {
 
-	_, err := i.noteServ.DeleteUser(ctx, req.Id)
+	_, err := i.auth.DeleteUser(ctx, req.Id)
 	if err != nil {
+		log.Printf("api failed to delete user: %v", err)
 		return nil, err
 	}
 

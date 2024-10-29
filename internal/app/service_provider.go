@@ -4,16 +4,16 @@ import (
 	"context"
 	"log"
 
-	"github.com/IRXCI/auth/internal/api/note"
+	"github.com/IRXCI/auth/internal/api/handler"
 	"github.com/IRXCI/auth/internal/client/db"
 	"github.com/IRXCI/auth/internal/client/db/pg"
 	"github.com/IRXCI/auth/internal/client/db/transaction"
 	"github.com/IRXCI/auth/internal/closer"
 	"github.com/IRXCI/auth/internal/config"
 	"github.com/IRXCI/auth/internal/repository"
-	noteRepository "github.com/IRXCI/auth/internal/repository/note"
+	authRepository "github.com/IRXCI/auth/internal/repository/auth"
 	"github.com/IRXCI/auth/internal/service"
-	noteService "github.com/IRXCI/auth/internal/service/note"
+	authService "github.com/IRXCI/auth/internal/service/auth"
 )
 
 type serviceProvider struct {
@@ -24,9 +24,9 @@ type serviceProvider struct {
 	txManager      db.TxManager
 	noteRepository repository.AuthRepository
 
-	noteService service.NoteService
+	auth service.AuthService
 
-	noteImpl *note.Implementation
+	handler *handler.Implementation
 }
 
 func newServProvider() *serviceProvider {
@@ -88,27 +88,27 @@ func (s *serviceProvider) TxManager(ctx context.Context) db.TxManager {
 
 func (s *serviceProvider) NoteRepository(ctx context.Context) repository.AuthRepository {
 	if s.noteRepository == nil {
-		s.noteRepository = noteRepository.NewRepository(s.DBClient(ctx))
+		s.noteRepository = authRepository.NewRepository(s.DBClient(ctx))
 	}
 
 	return s.noteRepository
 }
 
-func (s *serviceProvider) NoteService(ctx context.Context) service.NoteService {
-	if s.noteService == nil {
-		s.noteService = noteService.NewService(
+func (s *serviceProvider) NoteService(ctx context.Context) service.AuthService {
+	if s.auth == nil {
+		s.auth = authService.NewService(
 			s.NoteRepository(ctx),
 			s.TxManager(ctx),
 		)
 	}
 
-	return s.noteService
+	return s.auth
 }
 
-func (s *serviceProvider) NoteImpl(ctx context.Context) *note.Implementation {
-	if s.noteImpl == nil {
-		s.noteImpl = note.NewImplementation(s.NoteService(ctx))
+func (s *serviceProvider) NoteImpl(ctx context.Context) *handler.Implementation {
+	if s.handler == nil {
+		s.handler = handler.NewImplementation(s.NoteService(ctx))
 	}
 
-	return s.noteImpl
+	return s.handler
 }

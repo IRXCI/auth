@@ -1,12 +1,12 @@
 package convertor
 
 import (
-	"github.com/IRXCI/auth/internal/model"
+	"github.com/IRXCI/auth/internal/domain"
 	desc "github.com/IRXCI/auth/pkg/auth"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func ModelFromDescCreate(info *desc.CreateUserRequest) *model.User {
+func DomainFromDescCreate(info *desc.CreateUserRequest) *domain.User {
 	var res string
 	switch info.UserAuth.Role {
 	case desc.Role_USER:
@@ -15,28 +15,28 @@ func ModelFromDescCreate(info *desc.CreateUserRequest) *model.User {
 		res = desc.Role_ADMIN.String()
 	}
 
-	return &model.User{
+	return &domain.User{
 		Name:  info.UserAuth.Name,
 		Email: info.UserAuth.Email,
 		Role:  res,
 	}
 }
 
-func DescGetResFromModel(note *model.Note) *desc.GetUserResponse {
+func DescGetResponseFromDomain(auth *domain.UserInfo) *desc.GetUserResponse {
 	var updatedAt *timestamppb.Timestamp
-	if note.UpdatedAt.Valid {
-		updatedAt = timestamppb.New(note.UpdatedAt.Time)
+	if auth.UpdatedAt.Valid {
+		updatedAt = timestamppb.New(auth.UpdatedAt.Time)
 	}
 
 	return &desc.GetUserResponse{
-		Id:        note.Id,
-		UserAuth:  DescUserFromModel(note),
-		CreatedAt: timestamppb.New(note.CreatedAt),
+		Id:        auth.Id,
+		UserAuth:  DescUserFromDomain(auth),
+		CreatedAt: timestamppb.New(auth.CreatedAt),
 		UpdatedAt: updatedAt,
 	}
 }
 
-func DescUserFromModel(info *model.Note) *desc.User {
+func DescUserFromDomain(info *domain.UserInfo) *desc.User {
 	var res desc.Role
 	switch info.Role {
 	case desc.Role_USER.String():
@@ -52,8 +52,8 @@ func DescUserFromModel(info *model.Note) *desc.User {
 	}
 }
 
-func ModelFromDescUpd(n *desc.UpdateUserRequest) *model.UserPlusId {
-	return &model.UserPlusId{
+func DomainFromDescUpdate(n *desc.UpdateUserRequest) *domain.UserPlusId {
+	return &domain.UserPlusId{
 		Id:    n.Id,
 		Name:  n.Name.Value,
 		Email: n.Email.Value,

@@ -1,4 +1,4 @@
-package note
+package handler
 
 import (
 	"github.com/IRXCI/auth/internal/service"
@@ -7,11 +7,11 @@ import (
 
 type Implementation struct {
 	desc.UnimplementedUserAPIServer
-	noteServ service.NoteService
+	auth service.AuthService
 }
 
-func NewImplementation(noteServ service.NoteService) *Implementation {
+func NewImplementation(auth service.AuthService) *Implementation {
 	return &Implementation{
-		noteServ: noteServ,
+		auth: auth,
 	}
 }

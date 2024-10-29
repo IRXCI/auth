@@ -1,4 +1,4 @@
-package note
+package auth
 
 import (
 	"context"
@@ -7,23 +7,12 @@ import (
 	"time"
 
 	"github.com/IRXCI/auth/internal/client/db"
-	"github.com/IRXCI/auth/internal/model"
+	"github.com/IRXCI/auth/internal/domain"
 	"github.com/IRXCI/auth/internal/repository"
-	"github.com/IRXCI/auth/internal/repository/note/converter"
-	modelRepo "github.com/IRXCI/auth/internal/repository/note/model"
+	"github.com/IRXCI/auth/internal/repository/auth/converter"
+	modelRepo "github.com/IRXCI/auth/internal/repository/auth/model"
 	sq "github.com/Masterminds/squirrel"
 	"google.golang.org/protobuf/types/known/emptypb"
-)
-
-const (
-	tableName = "auth"
-
-	idColumn        = "id"
-	nameColumn      = "name"
-	emailColumn     = "email"
-	roleColumn      = "role"
-	createdAtColumn = "created_at"
-	updatedAtColumn = "updated_at"
 )
 
 type repo struct {
@@ -34,7 +23,7 @@ func NewRepository(db db.Client) repository.AuthRepository {
 	return &repo{db: db}
 }
 
-func validRole(info *model.User) error {
+func validRole(info *domain.User) error {
 	switch info.Role {
 	case "ADMIN":
 		return nil
@@ -46,7 +35,7 @@ func validRole(info *model.User) error {
 }
 
 func (r *repo) CreateUser(ctx context.Context,
-	info *model.User) (int64, error) {
+	info *domain.User) (int64, error) {
 
 	err := validRole(info)
 	if err != nil {
@@ -54,9 +43,9 @@ func (r *repo) CreateUser(ctx context.Context,
 		return 0, err
 	}
 
-	builderCreateUser := sq.Insert(tableName).
+	builderCreateUser := sq.Insert(modelRepo.TableName).
 		PlaceholderFormat(sq.Dollar).
-		Columns(nameColumn, emailColumn, roleColumn).
+		Columns(modelRepo.NameColumn, modelRepo.EmailColumn, modelRepo.RoleColumn).
 		Values(info.Name, info.Email, info.Role).
 		Suffix("RETURNING id")
 
@@ -67,7 +56,7 @@ func (r *repo) CreateUser(ctx context.Context,
 	}
 
 	q := db.Query{
-		Name:     "note_repository.CreateUser",
+		Name:     "auth_repository.CreateUser",
 		QueryRaw: query,
 	}
 
@@ -84,10 +73,11 @@ func (r *repo) CreateUser(ctx context.Context,
 }
 
 func (r *repo) GetUser(ctx context.Context,
-	id int64) (*model.Note, error) {
+	id int64) (*domain.UserInfo, error) {
 
-	builderGetUser := sq.Select(idColumn, nameColumn, emailColumn, roleColumn, createdAtColumn, updatedAtColumn).
-		From(tableName).
+	builderGetUser := sq.Select(modelRepo.IdColumn, modelRepo.NameColumn,
+		modelRepo.EmailColumn, modelRepo.RoleColumn, modelRepo.CreatedAtColumn, modelRepo.UpdatedAtColumn).
+		From(modelRepo.TableName).
 		PlaceholderFormat(sq.Dollar).
 		Where(sq.Eq{"id": id}).
 		Limit(1)
@@ -99,37 +89,37 @@ func (r *repo) GetUser(ctx context.Context,
 	}
 
 	q := db.Query{
-		Name:     "note_repository.GetUser",
+		Name:     "auth_repository.GetUser",
 		QueryRaw: query,
 	}
 
-	var note modelRepo.Note
+	var auth modelRepo.UserInfo
 	err = r.db.DB().QueryRowContext(ctx, q, args...).
-		Scan(&note.Id, &note.Name, &note.Email, &note.Role, &note.CreatedAt, &note.UpdatedAt)
+		Scan(&auth.Id, &auth.Name, &auth.Email, &auth.Role, &auth.CreatedAt, &auth.UpdatedAt)
 	if err != nil {
 		log.Printf("failed to select user: %v", err)
 		return nil, err
 	}
 
 	log.Printf("id: %d, name: %s, email: %s, role: %s, created_at: %v, updated_at: %v\n",
-		note.Id, note.Name, note.Email, note.Role, note.CreatedAt, note.UpdatedAt)
+		auth.Id, auth.Name, auth.Email, auth.Role, auth.CreatedAt, auth.UpdatedAt)
 
-	return converter.ToNoteFromRepo(&note), nil
+	return converter.ToAuthFromRepo(&auth), nil
 }
 
 func (r *repo) UpdateUser(ctx context.Context,
-	info *model.UserPlusId) (*emptypb.Empty, error) {
+	info *domain.UserPlusId) (*emptypb.Empty, error) {
 
-	builderUpdateUser := sq.Update(tableName).
+	builderUpdateUser := sq.Update(modelRepo.TableName).
 		PlaceholderFormat(sq.Dollar).
-		Set(updatedAtColumn, time.Now()).
+		Set(modelRepo.UpdatedAtColumn, time.Now()).
 		Where(sq.Eq{"id": info.Id})
 
 	if info.Name != "" {
-		builderUpdateUser = builderUpdateUser.Set(nameColumn, info.Name)
+		builderUpdateUser = builderUpdateUser.Set(modelRepo.NameColumn, info.Name)
 	}
 	if info.Email != "" {
-		builderUpdateUser = builderUpdateUser.Set(emailColumn, info.Email)
+		builderUpdateUser = builderUpdateUser.Set(modelRepo.EmailColumn, info.Email)
 	}
 
 	if info.Role == "UNSPECIFIED" {
@@ -138,7 +128,7 @@ func (r *repo) UpdateUser(ctx context.Context,
 	}
 
 	if info.Role != "" {
-		builderUpdateUser = builderUpdateUser.Set(roleColumn, info.Role)
+		builderUpdateUser = builderUpdateUser.Set(modelRepo.RoleColumn, info.Role)
 	}
 
 	query, args, err := builderUpdateUser.ToSql()
@@ -148,7 +138,7 @@ func (r *repo) UpdateUser(ctx context.Context,
 	}
 
 	q := db.Query{
-		Name:     "note_repository.UpdateUser",
+		Name:     "auth_repository.UpdateUser",
 		QueryRaw: query,
 	}
 
@@ -166,7 +156,7 @@ func (r *repo) UpdateUser(ctx context.Context,
 func (r *repo) DeleteUser(ctx context.Context,
 	id int64) (*emptypb.Empty, error) {
 
-	builderDeleteUser := sq.Delete(tableName).
+	builderDeleteUser := sq.Delete(modelRepo.TableName).
 		PlaceholderFormat(sq.Dollar).
 		Where(sq.Eq{"id": id})
 
@@ -177,7 +167,7 @@ func (r *repo) DeleteUser(ctx context.Context,
 	}
 
 	q := db.Query{
-		Name:     "note_repository.DeleteUser",
+		Name:     "auth_repository.DeleteUser",
 		QueryRaw: query,
 	}
 
