@@ -2,8 +2,8 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"log"
+	"log/slog"
 	"time"
 
 	"github.com/IRXCI/auth/internal/client/db"
@@ -23,30 +23,19 @@ func NewRepository(db db.Client) repository.AuthRepository {
 	return &repo{db: db}
 }
 
-func validRole(info *domain.User) error {
-	switch info.Role {
-	case "ADMIN":
-		return nil
-	case "USER":
-		return nil
-	default:
-		return errors.New("picked wrong role")
-	}
-}
-
 func (r *repo) CreateUser(ctx context.Context,
 	info *domain.User) (int64, error) {
 
-	err := validRole(info)
+	dbRole, err := converter.RoleToDB(info.Role)
 	if err != nil {
-		log.Printf("picked wrong role")
+		slog.Error("failed to convert role to db", slog.Any("error", err))
 		return 0, err
 	}
 
 	builderCreateUser := sq.Insert(modelRepo.TableName).
 		PlaceholderFormat(sq.Dollar).
 		Columns(modelRepo.NameColumn, modelRepo.EmailColumn, modelRepo.RoleColumn).
-		Values(info.Name, info.Email, info.Role).
+		Values(info.Name, info.Email, dbRole).
 		Suffix("RETURNING id")
 
 	query, args, err := builderCreateUser.ToSql()
@@ -107,31 +96,43 @@ func (r *repo) GetUser(ctx context.Context,
 	return converter.ToAuthFromRepo(&auth), nil
 }
 
+func buildUpdatesMap(req *domain.UserPlusId) (map[string]interface{}, bool) {
+	updates := make(map[string]interface{})
+
+	if email := req.Email; email != "" {
+		updates["email"] = email
+	}
+
+	if name := req.Name; name != "" {
+		updates["name"] = name
+	}
+
+	if role, err := converter.RoleToDB(req.Role); err == nil {
+		updates["role"] = role
+	}
+
+	if len(updates) != 0 {
+		updates["updated_at"] = time.Now()
+		return updates, false
+	}
+
+	return updates, true
+}
+
 func (r *repo) UpdateUser(ctx context.Context,
 	info *domain.UserPlusId) (*emptypb.Empty, error) {
 
-	builderUpdateUser := sq.Update(modelRepo.TableName).
-		PlaceholderFormat(sq.Dollar).
-		Set(modelRepo.UpdatedAtColumn, time.Now()).
-		Where(sq.Eq{"id": info.Id})
-
-	if info.Name != "" {
-		builderUpdateUser = builderUpdateUser.Set(modelRepo.NameColumn, info.Name)
-	}
-	if info.Email != "" {
-		builderUpdateUser = builderUpdateUser.Set(modelRepo.EmailColumn, info.Email)
+	updatedMap, noUpdates := buildUpdatesMap(info)
+	if noUpdates {
+		return &emptypb.Empty{}, nil
 	}
 
-	if info.Role == "UNSPECIFIED" {
-		log.Printf("picked wrong role")
-		return nil, errors.New("picked wrong role")
-	}
+	updateBuilder := sq.Update(modelRepo.TableName).
+		SetMap(updatedMap).
+		Where(sq.Eq{"id": info.Id}).
+		PlaceholderFormat(sq.Dollar)
 
-	if info.Role != "" {
-		builderUpdateUser = builderUpdateUser.Set(modelRepo.RoleColumn, info.Role)
-	}
-
-	query, args, err := builderUpdateUser.ToSql()
+	query, args, err := updateBuilder.ToSql()
 	if err != nil {
 		log.Printf("failed to build query: %v", err)
 		return nil, err
