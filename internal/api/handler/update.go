@@ -19,5 +19,7 @@ func (i *Implementation) UpdateUser(ctx context.Context,
 		return nil, err
 	}
 
+	log.Printf("handler: UpdateUser complete")
+
 	return &emptypb.Empty{}, nil
 }

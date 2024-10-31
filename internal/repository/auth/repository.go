@@ -93,26 +93,26 @@ func (r *repo) GetUser(ctx context.Context,
 	log.Printf("id: %d, name: %s, email: %s, role: %s, created_at: %v, updated_at: %v\n",
 		auth.Id, auth.Name, auth.Email, auth.Role, auth.CreatedAt, auth.UpdatedAt)
 
-	return converter.ToAuthFromRepo(&auth), nil
+	return converter.ToDomainFromRepo(&auth), nil
 }
 
-func buildUpdatesMap(req *domain.UserPlusId) (map[string]interface{}, bool) {
+func buildUpdatesMap(req *domain.UserWithId) (map[string]interface{}, bool) {
 	updates := make(map[string]interface{})
 
 	if email := req.Email; email != "" {
-		updates["email"] = email
+		updates[modelRepo.EmailColumn] = email
 	}
 
 	if name := req.Name; name != "" {
-		updates["name"] = name
+		updates[modelRepo.NameColumn] = name
 	}
 
 	if role, err := converter.RoleToDB(req.Role); err == nil {
-		updates["role"] = role
+		updates[modelRepo.RoleColumn] = role
 	}
 
 	if len(updates) != 0 {
-		updates["updated_at"] = time.Now()
+		updates[modelRepo.UpdatedAtColumn] = time.Now()
 		return updates, false
 	}
 
@@ -120,7 +120,7 @@ func buildUpdatesMap(req *domain.UserPlusId) (map[string]interface{}, bool) {
 }
 
 func (r *repo) UpdateUser(ctx context.Context,
-	info *domain.UserPlusId) (*emptypb.Empty, error) {
+	info *domain.UserWithId) (*emptypb.Empty, error) {
 
 	updatedMap, noUpdates := buildUpdatesMap(info)
 	if noUpdates {

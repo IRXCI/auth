@@ -5,7 +5,7 @@ import (
 	modelRepo "github.com/IRXCI/auth/internal/repository/auth/model"
 )
 
-func ToAuthFromRepo(auth *modelRepo.UserInfo) *domain.UserInfo {
+func ToDomainFromRepo(auth *modelRepo.UserInfo) *domain.UserInfo {
 	return &domain.UserInfo{
 		Id:        auth.Id,
 		Name:      auth.Name,

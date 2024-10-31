@@ -16,8 +16,8 @@ func DomainFromDescCreate(info *desc.CreateUserRequest) *domain.User {
 	}
 
 	return &domain.User{
-		Name:  info.UserAuth.Name,
-		Email: info.UserAuth.Email,
+		Name:  info.GetUserAuth().GetName(),
+		Email: info.GetUserAuth().GetEmail(),
 		Role:  res,
 	}
 }
@@ -52,11 +52,11 @@ func DescUserFromDomain(info *domain.UserInfo) *desc.User {
 	}
 }
 
-func DomainFromDescUpdate(n *desc.UpdateUserRequest) *domain.UserPlusId {
-	return &domain.UserPlusId{
-		Id:    n.Id,
-		Name:  n.Name.Value,
-		Email: n.Email.Value,
-		Role:  n.Role.String(),
+func DomainFromDescUpdate(n *desc.UpdateUserRequest) *domain.UserWithId {
+	return &domain.UserWithId{
+		Id:    n.GetId(),
+		Name:  n.GetName().GetValue(),
+		Email: n.GetEmail().GetValue(),
+		Role:  n.GetRole().String(),
 	}
 }

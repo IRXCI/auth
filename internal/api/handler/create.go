@@ -17,6 +17,8 @@ func (i *Implementation) CreateUser(ctx context.Context,
 		return nil, err
 	}
 
+	log.Printf("handler: CreateUser complete")
+
 	return &desc.CreateUserResponse{
 		Id: id,
 	}, nil

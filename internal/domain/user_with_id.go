@@ -1,6 +1,6 @@
 package domain
 
-type UserPlusId struct {
+type UserWithId struct {
 	Id    int64
 	Name  string
 	Email string

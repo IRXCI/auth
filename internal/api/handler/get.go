@@ -18,5 +18,7 @@ func (i *Implementation) GetUser(ctx context.Context,
 		return nil, err
 	}
 
+	log.Printf("handler: GetUser complete")
+
 	return convertor.DescGetResponseFromDomain(getUser), nil
 }

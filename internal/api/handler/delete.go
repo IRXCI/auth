@@ -17,5 +17,7 @@ func (i *Implementation) DeleteUser(ctx context.Context,
 		return nil, err
 	}
 
+	log.Printf("handler: DeleteUser complete")
+
 	return &emptypb.Empty{}, nil
 }

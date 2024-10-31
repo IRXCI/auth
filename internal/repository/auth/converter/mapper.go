@@ -9,13 +9,10 @@ import (
 type Role string
 
 const (
-	// Admin роль администратора
 	Admin Role = "ADMIN"
-	// User роль пользователя
-	User Role = "USER"
+	User  Role = "USER"
 )
 
-// TODO: separate layers
 func RoleToDB(role string) (Role, error) {
 	switch role {
 	case desc.Role_ADMIN.String():

@@ -8,7 +8,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func (a *AuthService) UpdateUser(ctx context.Context, info *domain.UserPlusId) (*emptypb.Empty, error) {
+func (a *AuthService) UpdateUser(ctx context.Context, info *domain.UserWithId) (*emptypb.Empty, error) {
 	_, err := a.authRepo.UpdateUser(ctx, info)
 	if err != nil {
 		log.Printf("service failed to update user: %v", err)
